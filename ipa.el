@@ -105,6 +105,14 @@
   :type 'function
   :group 'ipa)
 
+(defcustom ipa-overlay-position "inline"
+  "Determines where annotations are positioned. Options are
+ 'inline or 'above."
+  :type '(choice
+          (string :tag "inline" :value "inline")
+          (string :tag "above" :value "above"))
+  :group 'ipa)
+
 (defcustom ipa-context-size 16
   "Length of before and after context of annotation position in
   characters used to reposition the annotation if the annotated
@@ -174,6 +182,16 @@
 
 (defvar ipa-original-position-of-overlay-being-moved nil)
  
+(defun ipa-set-overlay-text-function()
+  (cond
+   ((string= ipa-overlay-position "inline") 'ipa-set-overlay-text-inline)
+   ((string= ipa-overlay-position "above") 'ipa-set-overlay-text-above)))
+
+(defun ipa-create-overlay-function()
+  (cond
+   ((string= ipa-overlay-position "inline") 'ipa-create-overlay-inline)
+   ((string= ipa-overlay-position "above") 'ipa-create-overlay-above)))
+
 (defun ipa-insert ()
  (interactive)
  (unless ipa-annotation-display
@@ -183,7 +201,7 @@
    (if (equal text  "")
        (message "Empty annotations are not inserted.")
        
-     (ipa-create-overlay (point) text)
+     (funcall (ipa-create-overlay-function) (point) text)
 
      (if (ipa-get-buffer-file-name)
          (ipa-save-annotations-if-necessary)
@@ -208,7 +226,7 @@
                      (delq annotation ipa-annotations-in-buffer))
                (message "Deleted annotation."))
 
-           (ipa-set-overlay-text (car annotation) text)
+           (funcall (ipa-set-overlay-text-function) (car annotation) text)
            (setcdr annotation text)
            (message "Updated annotation."))
 
@@ -260,7 +278,6 @@
 
 
 (defun ipa-cleanup ()
-  (interactive)
   (use-global-map ipa-old-global-map)
   (setq overriding-terminal-local-map nil)
   (remove-hook 'post-command-hook 'ipa-show-help))
@@ -365,13 +382,13 @@
         (dolist (buffer (buffer-list))
           (with-current-buffer buffer
             (dolist (annotation ipa-annotations-in-buffer)
-              (ipa-set-overlay-text (car annotation) (cdr annotation))
+              (funcall (ipa-set-overlay-text-function) (car annotation) (cdr annotation))
               (message "Annotations are shown."))))
 
       (dolist (buffer (buffer-list))
         (with-current-buffer buffer
           (dolist (annotation ipa-annotations-in-buffer)
-            (ipa-set-overlay-text (car annotation) "")
+            (funcall (ipa-set-overlay-text-function) (car annotation) "")
             (message "Annotations are hidden."))))))
 
 
@@ -468,7 +485,7 @@
                   (if (and (not (looking-at ipa-line-continuation))
                            text)
                       (with-current-buffer buffer
-                        (ipa-create-overlay pos text)
+                        (funcall (ipa-create-overlay-function) pos text)
                         (setq text nil)
                         (setq pos nil)))
 
@@ -529,35 +546,35 @@
 
 ;; OVERLAY ABOVE THE LINE
 
-;; (defun string-repeat (str n)
-;;   (let ((retval ""))
-;;     (dotimes (i n)
-;;       (setq retval (concat retval str)))
-;;     retval))
+ (defun string-repeat (str n)
+   (let ((retval ""))
+     (dotimes (i n)
+       (setq retval (concat retval str)))
+     retval))
  
-;; (defun ipa-set-overlay-text (overlay text)
-;;   (if (string-match ipa-annotation-id-regexp text)
-;;       (setq text (match-string 2 text)))
-;;   (save-excursion
-;;     (let ((ipa-indent-level (current-indentation)))
-;;     (beginning-of-line)
-;;     (overlay-put overlay 'before-string
-;;                  (if (equal text "") ""
-;;     	   (propertize
-;;     	    (concat
-;;     	     (string-repeat " " ipa-indent-level) "* " text "\n")
-;;     	    'face ipa-annotation-face))))))
+ (defun ipa-set-overlay-text-above (overlay text)
+   (if (string-match ipa-annotation-id-regexp text)
+       (setq text (match-string 2 text)))
+  (save-excursion
+    (let ((ipa-indent-level (current-indentation)))
+    (beginning-of-line)
+    (overlay-put overlay 'before-string
+                 (if (equal text "") ""
+    	   (propertize
+    	    (concat
+    	     (string-repeat " " ipa-indent-level) "* " text "\n")
+    	    'face ipa-annotation-face))))))
 
-;; (defun ipa-create-overlay (pos text)
-;;   (save-excursion
-;;     (goto-char pos)
-;;     (setq pos (point-at-bol))
-;;     (let ((overlay (make-overlay pos pos nil t nil)))
-;;      (ipa-set-overlay-text overlay text)
-;;      (push (cons overlay text) ipa-annotations-in-buffer)
-;;      (ipa-sort-overlays))))
+(defun ipa-create-overlay-above (pos text)
+  (save-excursion
+    (goto-char pos)
+    (setq pos (point-at-bol))
+    (let ((overlay (make-overlay pos pos nil t nil)))
+     (funcall (ipa-set-overlay-text-function) overlay text)
+     (push (cons overlay text) ipa-annotations-in-buffer)
+     (ipa-sort-overlays))))
 
-(defun ipa-set-overlay-text (overlay text)
+(defun ipa-set-overlay-text-inline (overlay text)
   (if (string-match ipa-annotation-id-regexp text)
       (setq text (match-string 2 text)))
   (overlay-put overlay 'before-string
@@ -565,11 +582,9 @@
                    ""
                  (propertize (concat "[" text "]") 'face ipa-annotation-face))))
 
-
-
-(defun ipa-create-overlay (pos text)
+(defun ipa-create-overlay-inline (pos text)
   (let ((overlay (make-overlay pos pos nil t nil)))
-    (ipa-set-overlay-text overlay text)
+    (funcall (ipa-set-overlay-text-function) overlay text)
     (push (cons overlay text) ipa-annotations-in-buffer)
     (ipa-sort-overlays)))
 
@@ -580,15 +595,12 @@
                 (< (overlay-start (car first))
                    (overlay-start (car second)))))))
 
-
-
 (defun ipa-find-storage-file ()
   (if (funcall ipa-file-function)
       (with-current-buffer (find-file-noselect (funcall ipa-file-function))
         (ipa-mode)
         (current-buffer))))
   
-
 (defun ipa-get-global-file ()
   ipa-file)
 
