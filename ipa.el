@@ -82,6 +82,15 @@
 
 ;; Tested on Emacs 24.
 
+;;; Changes by Ido Magal
+;;
+;;	- Created customization group 'ipa for easier customization.
+;;
+;;	- Added support for sidecar .ipa files ( annotations for file.txt are
+;;		are	stored in file.txt.ipa
+;;
+;;	- Added support for above-line annotation (rubikitch)
+;;
 ;;; Code:
 
 ;; User configuration
