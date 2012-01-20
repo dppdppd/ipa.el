@@ -1,7 +1,7 @@
 ;;; ipa.el --- In-place annotations
 
 ;; Copyright (C) 2007  Tamas Patrovics
-;; Updated 		 2012  Ido Magal
+;; Updated 2012  Ido Magal
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
