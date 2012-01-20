@@ -467,7 +467,7 @@
 (defun ipa-load-annotations-into-buffer ()
   (let ((filename (ipa-get-buffer-file-name))
         (buffer (current-buffer)))
-    (if (ipa-find-storage-file)
+    (if (ipa-find-storage-file-p) 
     (with-current-buffer (ipa-find-storage-file)
       (save-excursion
         (goto-char (point-min))
@@ -600,6 +600,11 @@
       (with-current-buffer (find-file-noselect (funcall ipa-file-function))
         (ipa-mode)
         (current-buffer))))
+
+(defun ipa-find-storage-file-p ()
+  (if (funcall ipa-file-function)
+      (file-exists-p (funcall ipa-file-function))))
+
   
 (defun ipa-get-global-file ()
   ipa-file)
